@@ -32,11 +32,6 @@ module Hallon
 			File.mkfifo(new_output)
 		end
 
-		# mumbletune intentions:
-		# rate = 4800
-		# channels = 1
-		# type = :int16
-
 		def drops
 			# This SHOULD return the number of times the queue "stuttered"
 			0
@@ -66,11 +61,8 @@ module Hallon
 
 					# Get the next block from Spotify.
 					audio_data = yield(@buffer_size)
-					# puts "delivery "
 
 					if audio_data.nil? # Audio format has changed, reset buffer.
-						puts "driver changed:"
-						puts "  #{format.to_s}"
 						@buffer.clear # reset structure
 					else # Write to our buffer and, if playing, to the FIFO queue.
 						@buffer += audio_data
