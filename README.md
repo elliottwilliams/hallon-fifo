@@ -20,14 +20,13 @@ Or install it yourself as:
 
 ## Usage
 
-Initialize a Hallon player with the FIFO driver. Pass a `&block` as the second argument to set the FIFO queue's path and customize the audio format, if you want:
+Initialize a Hallon player with the FIFO driver. Pass a `&block` as the second argument to set the FIFO queue's path (or accept the default `hallon-fifo.pcm`):
 
 ```ruby
 # After loading Hallon and creating a session...
 
 player = Hallon::Player.new Hallon::FIFO, Proc.new do
-	@driver.output = "hallon-fifo.pcm"
-	@driver.format = {:rate => 44100, :channels => 2, :type => :int16}
+	@driver.output = "cat-music.pcm"
 end
 ```
 
