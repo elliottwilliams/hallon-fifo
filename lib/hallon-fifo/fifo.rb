@@ -1,3 +1,5 @@
+require "mkfifo"
+
 module Hallon
 	class Fifo
 

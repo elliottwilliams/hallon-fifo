@@ -1,5 +1,5 @@
 module Hallon
-  module Fifo
+  class Fifo
     VERSION = "0.0.1"
   end
 end
