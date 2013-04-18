@@ -3,27 +3,21 @@ require "mkfifo"
 module Hallon
 	class Fifo
 
+		attr_accessor :format, :output
+
 		def initialize
 			@buffer = Array.new
 			@playing, @stopped = false
-			@buffer_size = 22050
+			@buffer_size = 22050 # overridden by format=
 
 			@output ||= "hallon-fifo.pcm"
 			File.delete(@output) if File.exists?(@output)
 			File.mkfifo(@output) # Will error if it's overwriting another file
 		end
 
-		def format
-			@format
-		end
-
 		def format=(new_format)
 			@format = new_format
 			@buffer_size = new_format[:rate] / 2
-		end
-
-		def output
-			@output
 		end
 
 		def output=(new_output)
@@ -36,6 +30,7 @@ module Hallon
 
 		def drops
 			# This SHOULD return the number of times the queue "stuttered"
+			# However, it ain't easy to do this with only knowledge of the fifo pipe.
 			0
 		end
 
@@ -61,6 +56,9 @@ module Hallon
 
 				loop do
 
+					start = Time.now.to_f
+					complete = start + 0.5
+
 					# Get the next block from Spotify.
 					audio_data = yield(@buffer_size)
 
@@ -74,6 +72,9 @@ module Hallon
 					end
 
 					ensure_playing
+
+					finish = Time.now.to_f
+					sleep complete - finish if finish < complete
 				end
 			end
 		end
