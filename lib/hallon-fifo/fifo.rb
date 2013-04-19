@@ -50,6 +50,10 @@ module Hallon
 			@buffer.clear
 		end
 
+		def reset
+			self.output = @output
+		end
+
 		def stream # runs indefinitely
 			@stream_thread = Thread.new do
 				queue = File.new(@output, "wb")
@@ -63,11 +67,14 @@ module Hallon
 					audio_data = yield(@buffer_size)
 
 					if audio_data.nil? # Audio format has changed, reset buffer.
-						@buffer.clear # reset structure
-					else # Write to our buffer and, if playing, to the FIFO queue.
+						@buffer.clear
+					else
 						@buffer += audio_data
-
-						queue.syswrite packed_samples(@buffer)
+						begin
+							queue.syswrite packed_samples(@buffer)
+						rescue Errno::EPIPE
+					        self.reset
+						end
 						@buffer.clear
 					end
 
