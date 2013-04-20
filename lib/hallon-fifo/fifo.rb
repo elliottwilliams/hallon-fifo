@@ -62,34 +62,36 @@ module Hallon
 		def stream # runs indefinitely
 			@stream_thread = Thread.new do
 				queue = File.new(@output, "wb")
+				play # always play initially
 
 				loop do
+					if @playing
 
-					start = Time.now.to_f
-					completion = start + 0.5
+						start = Time.now.to_f
+						completion = start + 0.5
 
-					# Get the next block from Spotify.
-					audio_data = yield(@buffer_size)
+						# Get the next block from Spotify.
+						audio_data = yield(@buffer_size)
 
-					if audio_data.nil? # Audio format has changed, reset buffer.
-						@buffer.clear
-					else
-						@buffer += audio_data
-						begin
-							queue.syswrite packed_samples(@buffer) if @playing
-						rescue Errno::EPIPE
-					        self.reset
+						if audio_data.nil? # Audio format has changed, reset buffer.
+							@buffer.clear
+						else
+							@buffer += audio_data
+							begin
+								queue.syswrite packed_samples(@buffer)
+							rescue Errno::EPIPE
+						        self.reset
+							end
+							@buffer.clear
 						end
-						@buffer.clear
-					end
 
-					ensure_playing
+						actual = Time.now.to_f
+						if actual > completion
+							process_stutter(completion, actual)
+						else
+							sleep completion - actual
+						end
 
-					actual = Time.now.to_f
-					if actual > completion
-						process_stutter(completion, actual)
-					else
-						sleep completion - actual
 					end
 				end
 			end
@@ -106,10 +108,6 @@ module Hallon
 
 		def packed_samples(frames)
 			frames.flatten.map { |i| [i].pack("s_") }.join
-		end
-
-		def ensure_playing
-			play unless @playing
 		end
 
 	end
