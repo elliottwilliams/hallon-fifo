@@ -9,6 +9,7 @@ module Hallon
 			@buffer = Array.new
 			@playing, @stopped = false
 			@buffer_size = 22050 # overridden by format=
+			@stutter = 0
 
 			@output ||= "hallon-fifo.pcm"
 			File.delete(@output) if File.exists?(@output)
@@ -28,19 +29,21 @@ module Hallon
 			File.mkfifo(new_output)
 		end
 
-		def drops
-			# This SHOULD return the number of times the queue "stuttered"
-			# However, it ain't easy to do this with only knowledge of the fifo pipe.
-			0
+		def drops # Return number of queue stutters since the last call
+			current_stutter, @stutter = @stutter, 0
+			print "(reported #{current_stutter} stutters) " if current_stutter > 0
+			current_stutter
 		end
 
 		def pause
 			@playing = false
+			print "\e[1;33m(pause)\e[0m"
 		end
 
 		def play
 			@playing = true
 			@stopped = false
+			print "\e[1;32m(play)\e[0m"
 		end
 
 		def stop
@@ -48,6 +51,7 @@ module Hallon
 			@stream_thread.exit if @stream_thread
 
 			@buffer.clear
+			print "\e[1;31m(stop)\e[0m"
 		end
 
 		def reset
@@ -61,7 +65,7 @@ module Hallon
 				loop do
 
 					start = Time.now.to_f
-					complete = start + 0.5
+					completion = start + 0.5
 
 					# Get the next block from Spotify.
 					audio_data = yield(@buffer_size)
@@ -71,7 +75,7 @@ module Hallon
 					else
 						@buffer += audio_data
 						begin
-							queue.syswrite packed_samples(@buffer)
+							queue.syswrite packed_samples(@buffer) if @playing
 						rescue Errno::EPIPE
 					        self.reset
 						end
@@ -80,13 +84,25 @@ module Hallon
 
 					ensure_playing
 
-					finish = Time.now.to_f
-					sleep complete - finish if finish < complete
+					actual = Time.now.to_f
+					if actual > completion
+						process_stutter(completion, actual)
+					else
+						sleep completion - actual
+					end
 				end
 			end
 		end
 
 		private
+
+		def process_stutter(projected_end, actual_end)
+			sec_missed     = actual_end - projected_end
+			samples_missed = (sec_missed * @format[:rate]).to_i
+			print "(#{samples_missed} stutter) "
+			pause if samples_missed > (@format[:rate] * 2)
+			@stutter += samples_missed
+		end
 
 		def packed_samples(frames)
 			frames.flatten.map { |i| [i].pack("s_") }.join
