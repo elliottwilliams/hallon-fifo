@@ -32,6 +32,7 @@ module Hallon
 		def drops # Return number of queue stutters since the last call
 			current_stutter, @stutter = @stutter, 0
 			print "(reported #{current_stutter} stutters) " if current_stutter > 0
+			pause if current_stutter > (@format[:rate] * 1)
 			current_stutter
 		end
 
@@ -100,7 +101,6 @@ module Hallon
 			sec_missed     = actual_end - projected_end
 			samples_missed = (sec_missed * @format[:rate]).to_i
 			print "(#{samples_missed} stutter) "
-			pause if samples_missed > (@format[:rate] * 2)
 			@stutter += samples_missed
 		end
 
